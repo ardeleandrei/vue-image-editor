@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Editor Web App</title>
+<meta name="description" content="Image Editor">
+<head>
+<script src="js/vue.min.js"></script>
+<link rel="stylesheet" type="text/css" href="css/style.css">
+<script src='https://cdnjs.cloudflare.com/ajax/libs/vue/2.3.4/vue.min.js'></script>
+</head>
+<body>
+<div class = "wrapper">
+  <div id="app" class = "vueApp">
+
+<!-- ______________________________________________Load Image-->
+    <div class = "dropWrapper" v-if="!editing">
+      <div :class = "['drop-area', dragging ? 'drop-areaOver' : '']"
+       @dragenter="dragging=true" @dragleave="dragging=false">
+      <input class = "imgInput" type="file"  @change="previewImage" accept="image/*">
+      <img src="icons/arrowup.svg" class = "upIcon" v-if="!imageData"></img>
+          <div class = "image-preview" v-if="imageData.length > 0">
+            <img class = "preview" :src="imageData">
+          </div>
+      </div>
+      <p class = "loadInfo" style = "left: calc(66% - 2px)">DRAG AND DROP IMAGE</p>
+      <p class = "loadInfo" style="top:35%; left: 67%">OR CLICK TO SELECT</p>
+      <button class="loadButton" v-if="imageData" @click="editing = true; loadImage()">EDIT IMAGE</button>
+    </div>
+<!-- ______________________________________________Edit Image-->
+
+  <div class = "sidebar" v-if="editing">
+    <div class= "btnWrapper">
+      <div class = "sidebarButton" id = "resize" v-on:click = "toggleState('resizing');" v-bind:class="{greyBackg: states.resizing}">
+        <img class = "resizeIcon" src = "icons/resizeicon.svg" v-bind:class="{fullBrightness: states.resizing}"></img></div>
+      <div class = "sidebarButton" id = "adjust" v-on:click = "toggleState('adjusting')" v-bind:class="{greyBackg: states.adjusting}">
+        <img class = "adjustIcon" src = "icons/adjusticon.svg" v-bind:class="{fullBrightness: states.adjusting}"></img></div>
+      <div class = "sidebarButton" id = "filter" v-on:click = "toggleState('filtering')" v-bind:class="{greyBackg: states.filtering}">
+        <img class = "filterIcon" src = "icons/filtericon.svg" v-bind:class="{fullBrightness: states.filtering}"></img></div>
+        <div class = "sidebarButton" id = "crop" v-on:click = "toggleState('cropping')" v-bind:class="{greyBackg: states.cropping}">
+          <img class = "cropIcon" src = "icons/cropicon.svg" v-bind:class="{fullBrightness: states.cropping}"></img></div>
+      <div class = "sidebarButton" id = "text" v-on:click = "toggleState('texting')" v-bind:class="{greyBackg: states.texting}">
+         <img class = "textIcon" src = "icons/texticon.svg" v-bind:class="{fullBrightness: states.texting}"></img></div>
+<!--SAVE and cancel Save buttons -->
+        <div class = "button" id="cancelSave" v-on:click = "toggleState('saving')"><center><p>✖</p></center></div>
+      <div class ="button" id="cancelSave" @click="toggleState('saving');" v-if ="!states.saving"><center><p>SAVE</p></center></div>
+
+    </div>
+
+  </div>
+
+<!-- ______________________________________________Rezizing Tool-->
+
+  <div class = "sideMenu" v-if="states.resizing"><h1 align="center">RESIZE</h1>
+
+    <h1 class = "inputLabel" id="widthLabel">WIDTH</h1>
+    <input class="menuInput" id="widthInput" type="text" v-model="trueWidth" v-on:input="adjustHeight()" />
+    <h1 class = "inputLabel" id="heightLabel">HEIGHT</h1>
+    <input class="menuInput" id="heightInput" type="text" v-model="trueHeight" v-on:input="adjustWidth()"/>
+    <h1 class = "inputLabel" id="toggleLabel">KEEP ASPECT RATIO</h1>
+    <div class="menuInput" id="toggleRatio" v-on:click = "toggleRatio()">
+      <h1 id="toggleValue">{{lockAspect}}</h1>
+    </div>
+
+    <div class = "cancelButton" v-on:click="toggleState('resizing')"><h1 class = "inputLabel" id="applyLabel" align="center">✖</h1></div>
+    <div class = "applyButton" v-on:click="apply('resize')"><h1 class = "inputLabel" id="applyLabel" align="center">APPLY</h1></div>
+    <div class = "undoButton" v-on:click="undo('resize')"><h1 class = "inputLabel" id="applyLabel" align="center">UNDO</h1></div>
+  </div>
+
+<!-- SAVE MENU INPUTS -->
+
+
+<div class = "sideMenu" id = "saveMenu" v-if="states.saving">
+  <h1 align="center">SAVE</h1>
+
+
+  <h1 class = "inputLabel" id="nameLabel">FILENAME</h1>
+  <input class ="nameInput" ref="nameInput" v-model="saveName" id="nameInputBox">
+  <h1 class = "inputLabel" id="formatLabel">FORMAT</h1>
+  <div class="formatsWrapper">
+    <div id = "formatJPG" v-on:click = "imgFormat = 'image/jpeg'; suffix = '.jpg'; loadOriginal()" v-bind:class="{formatSelected: imgFormat == 'image/jpeg'}">
+      <p style="margin-left: 29px; margin-top: 4px;">.JPG</p>
+    </div>
+    <div id = "formatPNG" v-bind:class="{formatSelected: imgFormat == 'image/png'}" v-on:click = "href = '#'; imgFormat = 'image/png'; suffix = '.png'; loadOriginal()">
+      <p style="margin-left: 28px; margin-top: 4px;">.PNG</p>
+    </div>
+  </div>
+    <div class="qualityWrapper" v-if="imgFormat == 'image/jpeg'">
+    <h1 class = "inputLabel" id="qualityLabel">JPG QUALITY</h1>
+    <h1 class = "inputLabel" id="qualityLevel">{{mappedQualityLevel}}</h1>
+    <input type = "range" min ="0" max="1" step="0.05" value='0.5' class="slider" id="qualitySlider" v-model="quality" v-on:click="loadOriginal();"/>
+    </div>
+    <a v-bind:download="saveName+suffix" v-bind:href="href" class="downloadBtn" ref="saveButton"
+    id="btn-download" v-on:click= "loadOriginal()"  v-if ="states.saving"><center><p>DOWNLOAD</p></center></a>
+</div>
+
+<!-- ______________________________________________Adjusting Tool-->
+
+  <div class = "sideMenu" v-if="states.adjusting"><h1 align="center">ADJUST</h1>
+
+<h1 class = "inputLabel" id="brightnessLabel">BRIGHTNESS</h1>
+<h1 class = "inputLabel" id="brightnessLevel">{{mappedBrightnessLevel}}</h1>
+<input type = "range" min ="0" max="2" step="0.01" value="1" class="slider"
+id="brightnessSlider" v-model="adjustments.brightness" v-on:click="pushTweak('adjust','brightness')"/>
+
+<h1 class = "inputLabel" id="contrastLabel">CONTRAST</h1>
+<h1 class = "inputLabel" id="contrastLevel">{{mappedContrastLevel}}</h1>
+<input type = "range" min ="0" max="2" step="0.01" value="1" class="slider"
+id="contrastSlider" v-model="adjustments.contrast" v-on:click="pushTweak('adjust','contrast')"/>
+
+<h1 class = "inputLabel" id="saturationLabel">SATURATION</h1>
+<h1 class = "inputLabel" id="saturationLevel">{{mappedSaturationLevel}}</h1>
+<input type = "range" min ="0" max="2" step="0.01" value="1" class="slider"
+id="saturationSlider" v-model="adjustments.saturation" v-on:click="pushTweak('adjust','saturation')"/>
+
+<h1 class = "inputLabel" id="hueLabel">HUE</h1>
+<h1 class = "inputLabel" id="hueLevel">{{mappedHueLevel}}</h1>
+<input type = "range" min ="-180" max="180" step="0.01" value="0" class="slider"
+id="hueSlider" v-model="adjustments.hue" v-on:click="pushTweak('adjust','hue')"/>
+
+    <div class = "cancelButton" v-on:click="toggleState('adjusting')"><h1 class = "inputLabel" id="applyLabel" align="center">✖</h1></div>
+    <div class = "applyButton" v-on:click="reset('adjust')"><h1 class = "inputLabel" id="applyLabel" align="center">RESET</h1></div>
+    <div class = "undoButton" v-on:click="undo('adjusting')"><h1 class = "inputLabel" id="applyLabel" align="center">UNDO</h1></div>
+  </div>
+
+  <!-- ______________________________________________Filtering Tool-->
+
+    <div class = "sideMenu" v-if="states.filtering"><h1 align="center">FILTER</h1>
+
+      <h1 class = "inputLabel" id="sepiaLabel">SEPIA</h1>
+      <h1 class = "inputLabel" id="sepiaLevel">{{mappedSepiaLevel}}</h1>
+      <input type = "range" min ="0" max="1" step="0.01" value="1" class="slider"
+       id="sepiaSlider" v-model="filters.sepia" v-on:click="pushTweak('filters','sepia')"/>
+
+      <h1 class = "inputLabel" id="grayscaleLabel">GRAYSCALE</h1>
+      <h1 class = "inputLabel" id="grayscaleLevel">{{mappedGrayscaleLevel}}</h1>
+      <input type = "range" min ="0" max="1" step="0.01" value="1" class="slider"
+       id="grayscaleSlider" v-model="filters.grayscale" v-on:click="pushTweak('filters','grayscale')"/>
+
+      <h1 class = "inputLabel" id="blurLabel">BLUR</h1>
+      <h1 class = "inputLabel" id="blurLevel">{{mappedBlurLevel}}</h1>
+      <input type = "range" min ="0" max="10" step="0.01" value="1" class="slider"
+       id="blurSlider" v-model="filters.blur" v-on:click="pushTweak('filters','blur')"/>
+
+      <div class = "cancelButton" v-on:click="toggleState('filtering')"><h1 class = "inputLabel" id="applyLabel" align="center">✖</h1></div>
+      <div class = "resetButton" v-on:click="reset('filters')"><h1 class = "inputLabel" id="resetLabel" align="center">RESET</h1></div>
+      <div class = "undoButton" v-on:click="undo('filtering')"><h1 class = "inputLabel" id="applyLabel" align="center">UNDO</h1></div>
+    </div>
+
+  <!-- ______________________________________________Cropping Tool-->
+
+    <div class = "sideMenu" v-if="states.cropping"><h1 align="center">CROP</h1>
+
+
+      <div class = "cancelButton" v-on:click="toggleState('cropping')"><h1 class = "inputLabel" id="applyLabel" align="center">✖</h1></div>
+      <div class = "applyButton" v-on:click=""><h1 class = "inputLabel" id="applyLabel" align="center">APPLY</h1></div>
+      <div class = "undoButton" v-on:click=""><h1 class = "inputLabel" id="applyLabel" align="center">UNDO</h1></div>
+    </div>
+
+<!-- ______________________________________________Texting Tool-->
+
+  <div class = "sideMenu" v-if="states.texting"><h1 align="center">TEXT</h1>
+
+    <div class = "cancelButton" v-on:click="toggleState('texting')"><h1 class = "inputLabel" id="applyLabel" align="center">✖</h1></div>
+    <div class = "applyButton" v-on:click=""><h1 class = "inputLabel" id="applyLabel" align="center">APPLY</h1></div>
+    <div class = "undoButton" v-on:click=""><h1 class = "inputLabel" id="applyLabel" align="center">UNDO</h1></div>
+  </div>
+
+<!-- ____________________________________________Canvas-->
+
+  <div class = "canvasHolder">
+  <canvas class = "imageCanvas"
+    ref ="imageCanvas"
+    v-if="editing"
+    v-bind:class="{notExceedingHC: notExceedingH}"
+    v-bind:style="{filter: 'brightness' + '(' + adjustments.brightness + ')' + ' '
+    + 'contrast' + '(' + adjustments.contrast + ')' + ' '
+    + 'saturate' + '(' + adjustments.saturation + ')' + ' '
+    + 'hue-rotate' + '(' + adjustments.hue + 'deg' + ')' + ' '
+    + 'sepia' + '(' + filters.sepia + ')' + ' '
+    + 'grayscale' + '(' + filters.grayscale + ')' + ' '
+    + 'blur' + '(' + filters.blur + 'px' + ')', 'margin-right': centerMargin}">
+  </canvas>
+  </div>
+</div>
+
+<script src="js/index.js"></script>
+<script>
+window.addEventListener("load", function(event) {
+ var vueApp = document.querySelector("#app");
+ vueApp.style.display = "block";
+});
+</script>
+</body>
