@@ -1,6 +1,8 @@
 # vue-image-editor
 Image Editor with Vue.js & HTML5 Canvas
 
+Live at https://ardy.ro/editor
+
 - resize image
 - adjust colors
 - add CSS filters
