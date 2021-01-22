@@ -6,8 +6,8 @@ Live at https://ardy.ro/editor
 - resize image
 - adjust colors
 - add CSS filters
-- crop (not yet implemented)
-- text overlay (not yet implemented)
+- crop
+- text overlay
 - convert to PNG or JPG & download
 
 This is intended to be a lightweight image editor that does all the manipulations on the client's browser, using own resources.
